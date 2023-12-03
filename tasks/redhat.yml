@@ -1,0 +1,19 @@
+---
+
+- name: Install needed Certs for satellite
+  ansible.builtin.dnf:
+    name: "{{ satellite_rpm }}"
+    state: present
+    disable_gpg_check: true
+
+- name: Check the registration status
+  command: /usr/sbin/subscription-manager list
+  register: command_output
+
+- name: Extract subscription information from command output
+  set_fact:
+    is_subscribed: "{{ 'Subscribed' in command_output.stdout }}"
+
+- name: Subscribe the server to satellite
+  command: subscription-manager register --org="{{ satellite_org }}" --activationkey="{{ satellite_key }}"
+  when: not is_subscribed

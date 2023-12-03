@@ -1,0 +1,6 @@
+---
+# tasks file for ansible_role_rhel_setup
+
+- include_tasks: redhat.yml
+  when: ansible_os_family == "RedHat"
+
