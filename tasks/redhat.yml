@@ -15,5 +15,5 @@
     is_subscribed: "{{ 'Subscribed' in command_output.stdout }}"
 
 - name: Subscribe the server to satellite
-  command: subscription-manager register --org="{{ satellite_org }}" --activationkey="{{ satellite_key }}"
+  command: subscription-manager register --org="{{ satellite_org }}" --activationkey="{{ satellite_key }} --auto-attach"
   when: not is_subscribed
