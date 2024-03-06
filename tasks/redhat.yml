@@ -6,18 +6,114 @@
     state: present
     disable_gpg_check: true
 
-- name: Check the registration status
+- name: Check the node registration status
   command: /usr/sbin/subscription-manager list
   register: command_output
+  changed_when: false
 
 - name: Extract subscription information from command output
   set_fact:
     is_subscribed: "{{ 'Subscribed' in command_output.stdout }}"
 
-- name: Subscribe the server to satellite
-  command: subscription-manager register --org="{{ satellite_org }}" --activationkey="{{ satellite_key }}"
-  when: not is_subscribed
 
-- name: Attach the server to satellite
-  command: subscription-manager attach"
-  when: not is_subscribed
+- name: Check for files in the entitlement backup folder
+  find:
+    paths: "files/nodes/{{ inventory_hostname }}/rhel_registration/entitlement/"
+    file_type: file
+  register: folder_contents_entitlement
+  delegate_to: localhost
+
+- name: Check for files in the consumer backup folder
+  find:
+    paths: "files/nodes/{{ inventory_hostname }}/rhel_registration/consumer/"
+    file_type: file
+  register: folder_contents_consumer
+  delegate_to: localhost
+
+
+
+- name: Check if there are files in the backup folders
+  set_fact:
+    subscription_is_backed_up: "{{ folder_contents_entitlement.files | length > 0 and  folder_contents_consumer.files | length > 0 }}"
+
+
+- name: subscribe
+  block:
+
+
+  - name: Subscribe the server to satellite
+    command: subscription-manager register --org="{{ satellite_org }}" --activationkey="{{ satellite_key }}" --force
+    failed_when: command_output.rc != 0 and command_output.rc != 1
+
+  - name: Attach the server to satellite
+    command: subscription-manager attach
+
+  when: (not is_subscribed) and (not subscription_is_backed_up)
+
+
+
+
+- name: back up subscription
+  block:
+
+  - name: Ensure there is a folder for the registration files in files/nodes/nodename/rhel_registration/entitlement/
+    file:
+      path: "files/nodes/{{ inventory_hostname }}/rhel_registration/entitlement/"
+      state: directory
+      recurse: yes
+    delegate_to: localhost
+
+  - name: Ensure there is a folder for the registration files in files/nodes/nodename/rhel_registration/consumer/
+    file:
+      path: "files/nodes/{{ inventory_hostname }}/rhel_registration/consumer/"
+      state: directory
+      recurse: yes
+    delegate_to: localhost
+
+  - name: Fetch remote files /etc/pki/entitlement/*.pem
+    synchronize:
+      src: "/etc/pki/entitlement/"
+      dest: "files/nodes/{{ inventory_hostname }}/rhel_registration/entitlement/"
+      mode: pull
+
+  - name: Fetch remote files /etc/pki/consumer/*.pem
+    synchronize:
+      src: "/etc/pki/consumer/*.pem"
+      dest: "files/nodes/{{ inventory_hostname }}/rhel_registration/consumer/"
+      mode: pull
+
+  when: not subscription_is_backed_up
+
+
+
+- name: restore backed up subscription
+  block:
+
+  - name: Ensure there is a folder for the registration files in /etc/pki/entitlement
+    file:
+      path: "/etc/pki/entitlement/"
+      state: directory
+
+  - name: Ensure there is a folder for the registration files in /etc/pki/consumer
+    file:
+      path: "/etc/pki/consumer/"
+      state: directory
+
+  - name: Copy registration files to /etc/pki/entitlement/
+    copy:
+      src: "{{ item }}"
+      dest: "/etc/pki/entitlement/"
+    with_fileglob:
+      - "files/nodes/{{ inventory_hostname }}/rhel_registration/entitlement/*"
+    when: not ansible_check_mode
+
+  - name: Copy registration files to /etc/pki/consumer/
+    copy:
+      src: "{{ item }}"
+      dest: "/etc/pki/consumer/"
+    with_fileglob:
+      - "files/nodes/{{ inventory_hostname }}/rhel_registration/consumer/*"
+    when: not ansible_check_mode
+
+
+  when: subscription_is_backed_up and not is_subscribed
