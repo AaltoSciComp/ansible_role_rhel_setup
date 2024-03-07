@@ -70,20 +70,32 @@
       recurse: yes
     delegate_to: localhost
 
-  - name: Fetch remote files /etc/pki/entitlement/*.pem
-    synchronize:
-      src: "/etc/pki/entitlement/"
-      dest: "files/nodes/{{ inventory_hostname }}/rhel_registration/entitlement/"
-      mode: pull
+  - name: Find files in /etc/pki/entitlement/
+    find:
+      paths: "/etc/pki/entitlement/"
+      patterns: "*.pem"  # Your wildcard pattern here
+    register: files_to_fetch_ent
 
-  - name: Fetch remote files /etc/pki/consumer/*.pem
-    synchronize:
-      src: "/etc/pki/consumer/*.pem"
-      dest: "files/nodes/{{ inventory_hostname }}/rhel_registration/consumer/"
-      mode: pull
+  - name: Fetch files entitlement
+    fetch:
+      src: "{{ item.path }}"
+      dest: "files/nodes/{{ inventory_hostname }}/rhel_registration/entitlement/{{ item.path | basename }}"
+    with_items: "{{ files_to_fetch_ent.files }}"
+
+
+  - name: Find files in /etc/pki/entitlement/
+    find:
+      paths: "/etc/pki/consumer/"
+      patterns: "*.pem"  # Your wildcard pattern here
+    register: files_to_fetch_con
+
+  - name: Fetch files consumer
+    fetch:
+      src: "{{ item.path }}"
+      dest: "files/nodes/{{ inventory_hostname }}/rhel_registration/consumer/{{ item.path | basename }}"
+    with_items: "{{ files_to_fetch_con.files }}"
 
   when: not subscription_is_backed_up
-
 
 
 - name: restore backed up subscription
