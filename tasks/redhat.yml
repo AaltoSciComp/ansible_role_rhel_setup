@@ -17,20 +17,22 @@
 
 
 - name: Check for files in the entitlement backup folder
-  find:
+  ansible.builtin.find:
     paths: "files/nodes/{{ inventory_hostname }}/rhel_registration/entitlement/"
-    file_type: file
+    file_type: "file"
+    patterns:
+      - "*.pem"
   register: folder_contents_entitlement
   delegate_to: localhost
 
 - name: Check for files in the consumer backup folder
-  find:
+  ansible.builtin.find:
     paths: "files/nodes/{{ inventory_hostname }}/rhel_registration/consumer/"
-    file_type: file
+    file_type: "file"
+    patterns:
+      - "*.pem"
   register: folder_contents_consumer
   delegate_to: localhost
-
-
 
 - name: Check if there are files in the backup folders
   set_fact:
@@ -71,28 +73,32 @@
     delegate_to: localhost
 
   - name: Find files in /etc/pki/entitlement/
-    find:
+    ansible.builtin.find:
       paths: "/etc/pki/entitlement/"
-      patterns: "*.pem"  # Your wildcard pattern here
+      patterns: "*.pem"
+      file_type: "file"
     register: files_to_fetch_ent
 
   - name: Fetch files entitlement
-    fetch:
+    ansible.builtin.fetch:
       src: "{{ item.path }}"
-      dest: "files/nodes/{{ inventory_hostname }}/rhel_registration/entitlement/{{ item.path | basename }}"
+      dest: "files/nodes/{{ inventory_hostname }}/rhel_registration/entitlement/"
+      flat: true
     with_items: "{{ files_to_fetch_ent.files }}"
 
 
   - name: Find files in /etc/pki/entitlement/
-    find:
+    ansible.builtin.find:
       paths: "/etc/pki/consumer/"
-      patterns: "*.pem"  # Your wildcard pattern here
+      patterns: "*.pem"
+      file_type: "file"
     register: files_to_fetch_con
 
   - name: Fetch files consumer
-    fetch:
+    ansible.builtin.fetch:
       src: "{{ item.path }}"
-      dest: "files/nodes/{{ inventory_hostname }}/rhel_registration/consumer/{{ item.path | basename }}"
+      dest: "files/nodes/{{ inventory_hostname }}/rhel_registration/consumer/"
+      flat: true
     with_items: "{{ files_to_fetch_con.files }}"
 
   when: not subscription_is_backed_up
