@@ -1,0 +1,14 @@
+---
+
+- name: Set RHSM release version
+  community.general.rhsm_release:
+    release: "{{ rhel_release }}"
+  when: rhel_release is defined
+
+
+- name: Enable the repositories
+  community.general.rhsm_repository:
+    name: "{{ item }}"
+    state: enabled
+  loop: "{{ rhel_eus_repos }}"
+  when: rhel_eus_repos is defined
