@@ -7,3 +7,5 @@ rhel_eus_repos:
   - rhel-9-for-x86_64-appstream-eus-rpms
   - rhel-9-for-x86_64-supplementary-eus-rpms
   - codeready-builder-for-rhel-9-x86_64-eus-rpms
+
+rhel_set_release: False

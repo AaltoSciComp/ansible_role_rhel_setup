@@ -4,3 +4,5 @@
 - include_tasks: redhat.yml
   when: ansible_os_family == "RedHat"
 
+- include_tasks: set_eus.yml
+  when: rhel_set_release
